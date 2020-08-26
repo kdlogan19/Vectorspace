@@ -14,7 +14,6 @@ def Main():
 		print('*****')
 		exit()
 	# print(result)
-	result = set_depth(result, *args)
 	try: 
 		array = list(map(operator.itemgetter('root_symbol', 'cor_symbol'), result))
 		if not len(result):
@@ -22,61 +21,9 @@ def Main():
 	except:
 		return "error with "
 	save_results(array, "output/cluster/", "cluster_output.json")
-	save_results(result, "output/graph/", "graph_output_full.json")
+	save_results(result, "output/cluster/", "graph_output_full.json")
 	return
 
-def set_depth(result, root_symbol, headers, data, min_score, max_depth, branches, nodes, n_headers, n_data, t_headers, t_data):
-	#initialize 2 lists containing symbols
-	symbols=[]
-	covered_symbols=[]
-	temp=[]
-	count=0
-	covered_symbols.append(root_symbol)
-
-	#this is used for the while loop(subtracted by 1 because first level has already been covered above)
-	remainer_depth=max_depth-1
-
-	while remainer_depth>0 and len(result)<nodes:
-		if count%2==1:
-			data=n_data.copy()
-			headers=n_headers[:]
-		else:
-			data=t_data.copy()
-			headers=t_headers[:]
-
-		#removes all symbols previously covered
-		symbols=[x for x in symbols if x not in covered_symbols]
-		for j in range(len(result)):
-			#checking if the symbol in question has already been covered or not
-			if(result[j]['cor_symbol'] not in covered_symbols and result[j]['cor_symbol'] not in symbols):
-				symbols.append(result[j]['cor_symbol'])
-		#print("Symbols: ", symbols)
-		
-		temp[:]=[]
-		try:
-			for name in symbols:
-				#performs the same function as with the root symbol
-				temp[(len(temp)):]=get_intersected(name, headers, data, min_score, max_depth-remainer_depth+1)
-		except:
-			pass
-		remainer_depth-=1
-
-
-		temp=sorted(sorted(temp, key=operator.itemgetter('score'), reverse=True), 
-			key=operator.itemgetter('depth'))
-
-		#updates symbols already covered
-		covered_symbols.extend(symbols)
-		temp=remove_duplicates(temp)
-		if branches>0:
-			temp=set_branches(temp, branches, covered_symbols)
-
-		result.extend(temp)
-
-
-		count+=1
-
-	return result
 
 def save_results(list, path, name):
 	timestring= time.strftime("%Y%m%d-%H%M%S")
@@ -119,27 +66,15 @@ def read_csv():
 		print('Example: python main.py AGIO 50 datasets/pharma_pharma_dataset.csv')
 		print('*****')
 		exit()
-	# else:
-	# 	try:
-	# 		write_labels(sys.argv[2])
-    #         # print(args)
-	# 	except:
-	# 		print('*****')
-	# 		print('Usage: python main.py <nodes> <file_name>')
-	# 		print('Example: python main.py 50 datasets/pharma_pharma_dataset.csv')
-	# 		print('Note: passing the argument for branches and nodes as 0 gives the max possible amount of nodes and branches')
-	# 		print('Run with only the dataset as argument to generate a list of the labels')
-	# 		print('*****')
-	# 		exit()
 	
-	nodes = int(sys.argv[1])
+	nodes = 10
 	file_name = sys.argv[2]
-
+	root = sys.argv[1]
 	sys.argv = [sys.argv[0]]
 	min_score=0.0001
 	if nodes>100:
 		nodes=100
-
+	
 	#Read the dataset
 	headers = []
 	data = {}
@@ -170,7 +105,7 @@ def read_csv():
 			for row in t_csv:
 				temp=row[0].rstrip()
 				t_data[temp] = [float(x) for x in row[1:]]
-	return "000227_sym", headers, data, min_score, 5, 5, nodes, n_headers, n_data, t_headers, t_data
+	return root, headers, data, min_score, 5, 5, nodes, n_headers, n_data, t_headers, t_data
 
 
 def zipper(csv):
@@ -180,32 +115,32 @@ def zipper(csv):
 	else:
 		return zip(*csv)
 
-def write_labels(filename):
-	print("hi", filename)
-	with open(filename) as file:
-		delim=check_filetype(filename)
-		print(delim)
-		column_csv = csv.reader(file, delimiter=delim)
-		print(column_csv)
-		index_csv=None
-		columns = next(column_csv)[1:]
-		filename=filename.split('/', 1)[-1]
-		filename=filename[:-4]
-		print(filename)
-		with open("labels/column_labels_"+filename+".txt", 'w') as column_file:
-			column_file.writelines("%s\n" % column for column in columns)
+# def write_labels(filename):
+# 	with open(filename) as file:
+# 		delim=check_filetype(filename)
+# 		print(delim)
+# 		column_csv = csv.reader(file, delimiter=delim)
+# 		print(column_csv)
+# 		index_csv=None
+# 		columns = next(column_csv)[1:]
+# 		filename=filename.split('/', 1)[-1]
+# 		filename=filename[:-4]
+# 		print(filename)
+# 		with open("labels/column_labels_"+filename+".txt", 'w') as column_file:
+# 			column_file.writelines("%s\n" % column for column in columns)
 
-		index_csv=zipper(column_csv)
+# 		index_csv=zipper(column_csv)
 
-		rows = next(index_csv)[:]
-		with open("labels/row_labels_"+filename+".txt", 'w') as index_file:
-			index_file.writelines("%s\n" % row for row in rows)
-		print('*****')
-		print('Labels saved to "row_labels_'+filename+'.txt" and "column_labels_'+filename+'.txt" in the folder "labels"')
-		print('*****')
-		os._exit(1)
+# 		rows = next(index_csv)[:]
+# 		with open("labels/row_labels_"+filename+".txt", 'w') as index_file:
+# 			index_file.writelines("%s\n" % row for row in rows)
+# 		print('*****')
+# 		print('Labels saved to "row_labels_'+filename+'.txt" and "column_labels_'+filename+'.txt" in the folder "labels"')
+# 		print('*****')
+# 		os._exit(1)
 
 
+#Server class
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
@@ -219,8 +154,11 @@ if __name__ == '__main__':
 
 	PORT = 3000
 	my_server = socketserver.TCPServer(("", PORT), handler_object)
+
+	#main function
 	Main()
-	# Star the server
+
+	# Starting the server
 	my_server.serve_forever()
 	
 exit()
